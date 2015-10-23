@@ -23,6 +23,9 @@ int loopTime = 100;
 
 void setup()
 {
+  sparki.print("");
+  sparki.updateLCD();
+  sparki.clearLCD();
 }
 
 void loop() {
@@ -57,31 +60,34 @@ void loop() {
     }
   }
 
-  sparki.clearLCD(); // wipe the screen
+//  sparki.clearLCD(); // wipe the screen
 
   halfLR = (rightWheel + leftWheel) * 0.5;
-  sparki.println(halfLR);
+//  sparki.println(halfLR);
   
   x += cos(theta) * halfLR * loopTime;
   y += sin(theta) * halfLR * loopTime;
   theta += (rightWheel - leftWheel) * theInverseD * loopTime * 10;
   
-  sparki.print("X: ");
-  sparki.println(x / 10);
+//  sparki.print("X: ");
+//  sparki.println(x / 10);
+  int a = (x/10) + 30;
+  int b = (y/10) + 50;
   
-  sparki.print("Y: ");
-  sparki.println(y / 10);
+  sparki.drawPixel(a, b); 
+//  sparki.print("Y: ");
+//  sparki.println(y / 10);
   
-  sparki.print("Theta: " );
-  sparki.println(theta * 57.295);
+//  sparki.print("Theta: " );
+//  sparki.println(theta * 57.295);
   
   sparki.updateLCD();
 
   endTime = millis();
   
-  sparki.print("Time: ");
-  sparki.println(loopTime - (endTime - startTime));
-  sparki.updateLCD();
+//  sparki.print("Time: ");
+//  sparki.println(loopTime - (endTime - startTime));
+//  sparki.updateLCD();
   
   if (loopTime - (endTime - startTime) > 0) {
     delay(loopTime - (endTime - startTime));
