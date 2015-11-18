@@ -11,18 +11,22 @@ import android.content.IntentFilter;
 import android.inputmethodservice.InputMethodService;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListAdapter;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 
 
 public class MainActivity extends Activity {
@@ -31,11 +35,24 @@ public class MainActivity extends Activity {
     private BluetoothAdapter mBluetooth;
     private ArrayAdapter mAdapter;
     private ArrayList<String> names = new ArrayList<>();
+    private boolean parking = false;
+    private CountDownLatch latch = new CountDownLatch(1);
+    private Button button = null;
 
     private AdapterView.OnItemClickListener mMessageHandler = new AdapterView.OnItemClickListener() {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            bluetooth = new BTConnection(devices.get(position));
+            bluetooth = new BTConnection(devices.get(position), latch);
+            try {
+                latch.await();
+            }catch(InterruptedException e){
+                e.printStackTrace();
+            }
+            ListView mListView = (ListView)findViewById(R.id.listView);
+            mListView.setVisibility(SurfaceView.GONE);
+            mListView.setEnabled(false);
+            RelativeLayout layout = (RelativeLayout)findViewById(R.id.mainmenu);
+            layout.setVisibility(SurfaceView.VISIBLE);
         }
     };
 
@@ -45,7 +62,7 @@ public class MainActivity extends Activity {
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 if(device != null && device.getName() != null){
-                    names.add(device.getName());
+                    mAdapter.add(device.getName());
                     devices.add(device);
                 }
             }
@@ -56,9 +73,11 @@ public class MainActivity extends Activity {
         private BluetoothSocket sock = null;
         private InputStream mmInStream = null;
         private OutputStream mmOutStream = null;
+        private CountDownLatch latch = null;
 
-        public BTConnection(BluetoothDevice newDevice) {
+        public BTConnection(BluetoothDevice newDevice, CountDownLatch newLatch) {
             BluetoothSocket tmp = null;
+            latch = newLatch;
             try {
                 tmp = newDevice.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"));
                 Log.i("Jeeves", "Created socket with device");
@@ -82,7 +101,11 @@ public class MainActivity extends Activity {
                 Log.i("Jeeves", "Connected outputstream");
             } catch (IOException e){
                 e.printStackTrace();
+                Log.e("Jeeves", "Something went wrong!");
+                latch.countDown();
+                return;
             }
+            latch.countDown();
 
             while(true) {
                 try {
@@ -121,6 +144,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        button = (Button)findViewById(R.id.parkButton);
+
         mAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, names);
 
         ListView mListView = (ListView) findViewById(R.id.listView);
@@ -142,5 +167,23 @@ public class MainActivity extends Activity {
 
         //start discovering devices -- this is handled in the broadcast receiver
         mBluetooth.startDiscovery();
+    }
+
+    @Override
+    public void onDestroy(){
+        super.onDestroy();
+        unregisterReceiver(btReceiver);
+    }
+
+    public void signalSparki(View view){
+        if(!parking) {
+            bluetooth.park();
+            button.setText("retrieve!");
+            parking = true;
+        } else {
+            bluetooth.retrieve();
+            button.setText("park!");
+            parking = false;
+        }
     }
 }
