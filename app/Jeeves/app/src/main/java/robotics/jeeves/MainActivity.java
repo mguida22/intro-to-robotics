@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 
 
 public class MainActivity extends Activity {
@@ -35,12 +36,18 @@ public class MainActivity extends Activity {
     private ArrayAdapter mAdapter;
     private ArrayList<String> names = new ArrayList<>();
     private boolean parking = false;
+    private CountDownLatch latch = new CountDownLatch(1);
     private Button button = null;
 
     private AdapterView.OnItemClickListener mMessageHandler = new AdapterView.OnItemClickListener() {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            bluetooth = new BTConnection(devices.get(position));
+            bluetooth = new BTConnection(devices.get(position), latch);
+            try {
+                latch.await();
+            }catch(InterruptedException e){
+                e.printStackTrace();
+            }
             ListView mListView = (ListView)findViewById(R.id.listView);
             mListView.setVisibility(SurfaceView.GONE);
             mListView.setEnabled(false);
@@ -66,9 +73,11 @@ public class MainActivity extends Activity {
         private BluetoothSocket sock = null;
         private InputStream mmInStream = null;
         private OutputStream mmOutStream = null;
+        private CountDownLatch latch = null;
 
-        public BTConnection(BluetoothDevice newDevice) {
+        public BTConnection(BluetoothDevice newDevice, CountDownLatch newLatch) {
             BluetoothSocket tmp = null;
+            latch = newLatch;
             try {
                 tmp = newDevice.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"));
                 Log.i("Jeeves", "Created socket with device");
@@ -92,7 +101,11 @@ public class MainActivity extends Activity {
                 Log.i("Jeeves", "Connected outputstream");
             } catch (IOException e){
                 e.printStackTrace();
+                Log.e("Jeeves", "Something went wrong!");
+                latch.countDown();
+                return;
             }
+            latch.countDown();
 
             while(true) {
                 try {
