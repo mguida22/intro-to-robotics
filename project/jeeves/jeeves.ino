@@ -1,5 +1,17 @@
 #include <Sparki.h>
 
+void retrieve()
+{
+  sparki.println("Retrieve");
+  sparki.updateLCD();
+}
+
+void park()
+{
+  sparki.println("Park");
+  sparki.updateLCD();
+}
+
 void setup()
 {
   sparki.clearLCD();
@@ -11,10 +23,20 @@ void setup()
 
 void loop()
 {
-  while (Serial1.available())
+  if (Serial1.available())
   {
     int inByte = Serial1.read();
     sparki.print((char) inByte);
     sparki.updateLCD();
+    
+    if (inByte == "0")
+    {
+      retrieve();
+    }
+    
+    if (inByte == "1")
+    {
+      park();
+    }
   }
 }
