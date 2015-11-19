@@ -11,7 +11,7 @@ void setup()
 
 void loop()
 {
-  if (Serial1.available())
+  while (Serial1.available())
   {
     int inByte = Serial1.read();
     sparki.print((char) inByte);
