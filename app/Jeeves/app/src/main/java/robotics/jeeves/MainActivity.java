@@ -43,11 +43,10 @@ public class MainActivity extends Activity {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
             bluetooth = new BTConnection(devices.get(position), latch);
+            bluetooth.start();
             try {
                 latch.await();
-            }catch(InterruptedException e){
-                e.printStackTrace();
-            }
+            }catch(InterruptedException e){}
             ListView mListView = (ListView)findViewById(R.id.listView);
             mListView.setVisibility(SurfaceView.GONE);
             mListView.setEnabled(false);
@@ -78,8 +77,12 @@ public class MainActivity extends Activity {
         public BTConnection(BluetoothDevice newDevice, CountDownLatch newLatch) {
             BluetoothSocket tmp = null;
             latch = newLatch;
+            UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
             try {
-                tmp = newDevice.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"));
+                if(newDevice.getUuids() != null){
+                    uuid = newDevice.getUuids()[0].getUuid();
+                }
+                tmp = newDevice.createRfcommSocketToServiceRecord(uuid);
                 Log.i("Jeeves", "Created socket with device");
             } catch (IOException e) {
                 Log.e("Jeeves", "Failed in socket creation");
@@ -161,9 +164,10 @@ public class MainActivity extends Activity {
         devices = new ArrayList<>();
 
         //this is where we ask to enable bluetooth
-        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 0);
-        startActivity(discoverableIntent);
+        if (!mBluetooth.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, 0);
+        }
 
         //start discovering devices -- this is handled in the broadcast receiver
         mBluetooth.startDiscovery();
